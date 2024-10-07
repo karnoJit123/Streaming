@@ -1,16 +1,46 @@
-// const firebase = require('../../firebase');
-const uploadProcess=require('../../document')
-class Repository {
-    async save(files) {
-        try {
+const fs = require('fs');
 
-            console.log(files);
-            
-            /** check for files in the request */
-            if (files) {
-                const uploadedFile = await uploadProcess.uploadFile("test", files['0'].originalname);
-                return uploadedFile;
-            }
+const db = require("./firebase");
+
+const UUID = require("uuid-v4");
+
+const path = require("path");
+
+const os = require('os');
+
+exports.uploadFile = async (folder, fileName) => {
+    console.log("hi",fileName);
+    
+    const uuid = UUID();
+
+    const storage = db.storage();
+
+    const bucket = storage.bucket("gs://streaming-44c5b.appspot.com");
+
+    var downLoadPath = "https://firebasestorage.googleapis.com/v0/b/streaming-44c5b.appspot.com/o/";
+
+    const destinationFile = bucket.file(`${folder}/` + Date.now() + "_" + fileName);
+
+    const data = fs.readFileSync(path.resolve(os.tmpdir() + "/" + fileName));
+
+    try {
+        await destinationFile.save(data);
+
+        destinationFile.setMetadata({ metadata: { firebaseStorageDownloadTokens: uuid } });
+
+        var fileURL = downLoadPath + encodeURIComponent(destinationFile.name) + "?alt=media&token=" + uuid;
+
+        return fileURL;
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+}
+  // let documents = [];
+            // let images = [];
+
+            // /** check for files in the request */
+            // if (files && files.length > 0) {
             //     /** separate the document and image files */
             //     const documentFiles = files.filter(file => file.fieldname.includes("documents"));
             //     const imageFiles = files.filter(file => file.fieldname.includes("images"));
@@ -32,13 +62,3 @@ class Repository {
             // /** attach both the documents and images array to the salesman */
             // this.payload.documents = (existingSalesman.documents || []).concat(documents);
             // this.payload.images = (existingSalesman.images || []).concat(images);
-    
-            return fileData;
-        } catch (error) {
-            console.error('Error saving file:', error);
-            throw error;
-        }
-    }
-    
-}
-module.exports = Repository;
